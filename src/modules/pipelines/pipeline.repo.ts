@@ -78,6 +78,20 @@ export async function getPipelineRowById(
   return result.rows[0] ?? null;
 }
 
+export async function getPipelineRowBySourceKey(
+  sourceKey: string
+): Promise<PipelineRow | null> {
+  const query = `
+    SELECT *
+    FROM pipelines
+    WHERE source_key = $1
+    LIMIT 1
+  `;
+
+  const result = await pool.query<PipelineRow>(query, [sourceKey]);
+  return result.rows[0] ?? null;
+}
+
 export async function updatePipelineRowById(
   id: string,
   input: UpdatePipelineRowInput
