@@ -67,3 +67,83 @@ export async function getJobRowById(id: string): Promise<JobRow | null> {
   const result = await pool.query<JobRow>(query, [id]);
   return result.rows[0] ?? null;
 }
+
+export async function claimNextQueuedJob(): Promise<JobRow | null> {
+  const client = await pool.connect();
+
+  try {
+    await client.query("BEGIN");
+
+    const query = `
+      WITH next_job AS (
+        SELECT id
+        FROM jobs
+        WHERE status = 'queued'
+          AND run_at <= NOW()
+        ORDER BY created_at ASC
+        FOR UPDATE SKIP LOCKED
+        LIMIT 1
+      )
+      UPDATE jobs
+      SET
+        status = 'processing',
+        attempt_count = attempt_count + 1,
+        updated_at = NOW()
+      WHERE id IN (SELECT id FROM next_job)
+      RETURNING *
+    `;
+
+    const result = await client.query<JobRow>(query);
+
+    await client.query("COMMIT");
+
+    return result.rows[0] ?? null;
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+export async function markJobCompleted(
+  jobId: string,
+  processedPayload: Record<string, unknown>
+): Promise<JobRow | null> {
+  const query = `
+    UPDATE jobs
+    SET
+      status = 'completed',
+      processed_payload = $2,
+      error_message = NULL,
+      processed_at = NOW(),
+      updated_at = NOW()
+    WHERE id = $1
+    RETURNING *
+  `;
+
+  const result = await pool.query<JobRow>(query, [
+    jobId,
+    JSON.stringify(processedPayload)
+  ]);
+
+  return result.rows[0] ?? null;
+}
+
+export async function markJobFailed(
+  jobId: string,
+  errorMessage: string
+): Promise<JobRow | null> {
+  const query = `
+    UPDATE jobs
+    SET
+      status = 'failed',
+      error_message = $2,
+      updated_at = NOW()
+    WHERE id = $1
+    RETURNING *
+  `;
+
+  const result = await pool.query<JobRow>(query, [jobId, errorMessage]);
+  return result.rows[0] ?? null;
+}
