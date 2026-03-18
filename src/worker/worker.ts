@@ -1,10 +1,12 @@
 import { getPipelineRowById } from "../modules/pipelines/pipeline.repo";
 import {
   claimNextQueuedJob,
-  markJobCompleted,
-  markJobFailed
+  markJobFailed,
+  markJobFinalStatus,
+  saveProcessedPayload
 } from "../modules/jobs/job.repo";
 import { processPayload } from "../modules/processing/processor";
+import { deliverToSubscribers } from "../modules/deliveries/delivery.service";
 
 const POLL_INTERVAL_MS = 3000;
 
@@ -51,9 +53,42 @@ async function processOneJob(): Promise<boolean> {
       pipelineId: pipeline.id
     });
 
-    await markJobCompleted(job.id, processedPayload);
+    await saveProcessedPayload(job.id, processedPayload);
 
-    console.log(`[worker] completed job ${job.id}`);
+    const deliveryResult = await deliverToSubscribers({
+      pipelineId: pipeline.id,
+      jobId: job.id,
+      processedPayload
+    });
+
+    if (deliveryResult.totalSubscribers === 0) {
+      await markJobFinalStatus(job.id, "completed", null);
+      console.log(`[worker] completed job ${job.id} (no subscribers)`);
+      return true;
+    }
+
+    if (deliveryResult.successCount === deliveryResult.totalSubscribers) {
+      await markJobFinalStatus(job.id, "completed", null);
+      console.log(`[worker] completed job ${job.id}`);
+      return true;
+    }
+
+    if (deliveryResult.successCount > 0) {
+      await markJobFinalStatus(
+        job.id,
+        "partial_failed",
+        `${deliveryResult.failedCount} subscriber deliveries failed`
+      );
+      console.log(`[worker] partial failure for job ${job.id}`);
+      return true;
+    }
+
+    await markJobFinalStatus(
+      job.id,
+      "failed",
+      "All subscriber deliveries failed"
+    );
+    console.log(`[worker] failed delivery for job ${job.id}`);
     return true;
   } catch (error) {
     const message =

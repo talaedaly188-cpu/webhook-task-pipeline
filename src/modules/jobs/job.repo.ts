@@ -106,16 +106,14 @@ export async function claimNextQueuedJob(): Promise<JobRow | null> {
   }
 }
 
-export async function markJobCompleted(
+export async function saveProcessedPayload(
   jobId: string,
   processedPayload: Record<string, unknown>
 ): Promise<JobRow | null> {
   const query = `
     UPDATE jobs
     SET
-      status = 'completed',
       processed_payload = $2,
-      error_message = NULL,
       processed_at = NOW(),
       updated_at = NOW()
     WHERE id = $1
@@ -130,20 +128,28 @@ export async function markJobCompleted(
   return result.rows[0] ?? null;
 }
 
-export async function markJobFailed(
+export async function markJobFinalStatus(
   jobId: string,
-  errorMessage: string
+  status: "completed" | "failed" | "partial_failed",
+  errorMessage: string | null = null
 ): Promise<JobRow | null> {
   const query = `
     UPDATE jobs
     SET
-      status = 'failed',
-      error_message = $2,
+      status = $2,
+      error_message = $3,
       updated_at = NOW()
     WHERE id = $1
     RETURNING *
   `;
 
-  const result = await pool.query<JobRow>(query, [jobId, errorMessage]);
+  const result = await pool.query<JobRow>(query, [jobId, status, errorMessage]);
   return result.rows[0] ?? null;
+}
+
+export async function markJobFailed(
+  jobId: string,
+  errorMessage: string
+): Promise<JobRow | null> {
+  return markJobFinalStatus(jobId, "failed", errorMessage);
 }

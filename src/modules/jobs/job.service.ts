@@ -4,6 +4,7 @@ import {
   getJobRowById
 } from "./job.repo";
 import { getPipelineRowBySourceKey } from "../pipelines/pipeline.repo";
+import { getDeliveryAttemptRowsByJobId } from "../deliveries/delivery.repo";
 
 export async function enqueueWebhookJob(
   sourceKey: string,
@@ -42,4 +43,19 @@ export async function getJobs() {
 
 export async function getJobById(id: string) {
   return getJobRowById(id);
+}
+
+export async function getJobAttempts(jobId: string) {
+  const job = await getJobRowById(jobId);
+
+  if (!job) {
+    return null;
+  }
+
+  const attempts = await getDeliveryAttemptRowsByJobId(jobId);
+
+  return {
+    job,
+    attempts
+  };
 }

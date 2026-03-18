@@ -55,6 +55,21 @@ export async function getSubscriberRowsByPipelineId(
   return result.rows;
 }
 
+export async function getActiveSubscriberRowsByPipelineId(
+  pipelineId: string
+): Promise<SubscriberRow[]> {
+  const query = `
+    SELECT *
+    FROM subscribers
+    WHERE pipeline_id = $1
+      AND is_active = true
+    ORDER BY created_at DESC
+  `;
+
+  const result = await pool.query<SubscriberRow>(query, [pipelineId]);
+  return result.rows;
+}
+
 export async function deleteSubscriberRowById(id: string): Promise<boolean> {
   const query = `
     DELETE FROM subscribers

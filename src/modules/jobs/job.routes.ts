@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { getJobById, getJobs } from "./job.service";
+import { getJobAttempts, getJobById, getJobs } from "./job.service";
 
 export const jobRouter = Router();
 
@@ -16,6 +16,30 @@ jobRouter.get("/", async (_req, res) => {
 
     return res.status(500).json({
       message: "Failed to fetch jobs",
+      error: message
+    });
+  }
+});
+
+jobRouter.get("/:id/attempts", async (req, res) => {
+  try {
+    const result = await getJobAttempts(req.params.id);
+
+    if (!result) {
+      return res.status(404).json({
+        message: "Job not found"
+      });
+    }
+
+    return res.status(200).json({
+      data: result
+    });
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Unknown server error";
+
+    return res.status(500).json({
+      message: "Failed to fetch job attempts",
       error: message
     });
   }
