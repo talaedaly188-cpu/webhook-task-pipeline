@@ -17,5 +17,28 @@ services:
       timeout: 5s
       retries: 5
 
+  api:
+    build: .
+    container_name: webhook_api
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://postgres:postgres@db:5432/webhook_pipeline
+      PORT: 3000
+    ports:
+      - "3000:3000"
+    command: npm run start
+
+  worker:
+    build: .
+    container_name: webhook_worker
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://postgres:postgres@db:5432/webhook_pipeline
+    command: node dist/worker/worker.js
+
 volumes:
   postgres_data:
