@@ -7,6 +7,7 @@ export type PipelineRow = {
   action_type: "add_metadata" | "pick_fields" | "rename_fields";
   action_config: Record<string, unknown>;
   is_active: boolean;
+  webhook_secret: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -17,6 +18,7 @@ type CreatePipelineRowInput = {
   actionType: "add_metadata" | "pick_fields" | "rename_fields";
   actionConfig: Record<string, unknown>;
   isActive: boolean;
+  webhookSecret?: string | null;
 };
 
 type UpdatePipelineRowInput = {
@@ -35,9 +37,10 @@ export async function createPipelineRow(
       source_key,
       action_type,
       action_config,
-      is_active
+      is_active,
+      webhook_secret
     )
-    VALUES ($1, $2, $3, $4, $5)
+    VALUES ($1, $2, $3, $4, $5, $6)
     RETURNING *
   `;
 
@@ -46,7 +49,8 @@ export async function createPipelineRow(
     input.sourceKey,
     input.actionType,
     JSON.stringify(input.actionConfig),
-    input.isActive
+    input.isActive,
+    input.webhookSecret ?? null
   ];
 
   const result = await pool.query<PipelineRow>(query, values);

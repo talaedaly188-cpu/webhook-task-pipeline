@@ -21,10 +21,10 @@ export async function createPipeline(input: CreatePipelineInput) {
     sourceKey: generateSourceKey(),
     actionType: input.actionType,
     actionConfig: input.actionConfig,
-    isActive: input.isActive
+    isActive: input.isActive,
+    webhookSecret: input.webhookSecret ?? null
   });
 }
-
 export async function getPipelines() {
   return getAllPipelineRows();
 }

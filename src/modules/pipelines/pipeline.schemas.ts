@@ -10,7 +10,8 @@ export const createPipelineSchema = z.object({
   name: z.string().min(1).max(100),
   actionType: actionTypeSchema,
   actionConfig: z.record(z.string(), z.any()).optional().default({}),
-  isActive: z.boolean().optional().default(true)
+  isActive: z.boolean().optional().default(true),
+  webhookSecret: z.string().optional()
 });
 
 export const updatePipelineSchema = z.object({

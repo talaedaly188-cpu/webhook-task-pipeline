@@ -7,8 +7,13 @@ import { jobRouter } from "./modules/jobs/job.routes";
 
 export const app = express();
 
-app.use(express.json());
-
+app.use(
+  express.json({
+    verify: (req, _res, buf) => {
+      (req as any).rawBody = buf;
+    }
+  })
+);
 app.use("/health", healthRouter);
 app.use("/pipelines", pipelineRouter);
 app.use("/", subscriberRouter);
